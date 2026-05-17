@@ -91,6 +91,28 @@ export interface UploadedFile {
 }
 
 // ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+export type ValidationStatus = 'checking' | 'good' | 'acceptable' | 'poor';
+export type QualityLabel = 'GOOD' | 'ACCEPTABLE' | 'POOR';
+
+export interface ValidationResult {
+  isReadable: boolean;
+  reason: string;        // English key (e.g. 'blur', 'dark', 'ok')
+  reasonBn: string;      // Bengali message shown to user
+  reasonEn: string;      // English message shown to user
+  checkedAt: string;     // ISO date string
+  qualityScore: number;  // 0–100
+  qualityLabel: QualityLabel;
+}
+
+export interface ValidatedFile extends UploadedFile {
+  id: string;
+  validationStatus: ValidationStatus;
+  validationResult?: ValidationResult;
+}
+
+// ---------------------------------------------------------------------------
 // Payment
 // ---------------------------------------------------------------------------
 export interface PaymentDetails {

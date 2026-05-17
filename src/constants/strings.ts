@@ -179,6 +179,31 @@ export const HistoryStrings = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+export const ValidationStrings = {
+  // Per-file status badges
+  checking:   s('যাচাই হচ্ছে...', 'Checking...'),
+  good:       s('পরিষ্কার', 'Clear'),
+  acceptable: s('গ্রহণযোগ্য', 'Acceptable'),
+  poor:       s('গ্রহণযোগ্য নয়', 'Not acceptable'),
+
+  // Block messages
+  poorFileBlock: s(
+    'কিছু ফাইলের মান ভালো না — সরিয়ে আবার চেষ্টা করুন',
+    'Some files have poor quality — remove and retry'
+  ),
+  checkingBlock: s(
+    'ফাইল যাচাই চলছে, একটু অপেক্ষা করুন',
+    'Validation in progress, please wait'
+  ),
+  acceptableWarning: s(
+    'মান কম — AI বিশ্লেষণ নির্ভুল নাও হতে পারে',
+    'Low quality — AI analysis may be less accurate'
+  ),
+} as const;
+
+// ---------------------------------------------------------------------------
 // Helper to get string by language
 // ---------------------------------------------------------------------------
 export function t(map: StringMap, lang: Language): string {

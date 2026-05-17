@@ -1,178 +1,32 @@
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/colors';
 import { AppStrings, HomeStrings, t } from '@/constants/strings';
-import type { Language, UploadedFile } from '@/types';
-
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 15 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'] as const;
-type AllowedMime = (typeof ALLOWED_TYPES)[number];
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import type { Language } from '@/types';
+import UploadArea from '@/components/UploadArea';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 type Props = {
-  onAnalyze: (files: UploadedFile[], language: Language) => void;
+  onAnalyze: (files: import('@/types').UploadedFile[], language: Language) => void;
 };
 
 export default function HomeScreen({ onAnalyze }: Props) {
-  const [files, setFiles] = useState<UploadedFile[]>([]);
-  const [language, setLanguage] = useState<Language>('bn');
-  const [error, setError] = useState<string | null>(null);
-  const [showSourceSheet, setShowSourceSheet] = useState(false);
+  const {
+    files,
+    language,
+    setLanguage,
+    error,
+    showSourceSheet,
+    setShowSourceSheet,
+    canAnalyze,
+    openCamera,
+    openGallery,
+    openDocumentPicker,
+    removeFile,
+  } = useFileUpload();
 
-  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-  const canAnalyze = files.length > 0;
-
-  // Shared validation + merge logic for image assets (camera & gallery)
-  const addImageAssets = useCallback(
-    (assets: ImagePicker.ImagePickerAsset[]) => {
-      let validationError: string | null = null;
-      const incoming: UploadedFile[] = [];
-
-      for (const asset of assets) {
-        const size = asset.fileSize ?? 0;
-        const mime = (asset.mimeType ?? 'image/jpeg') as AllowedMime;
-
-        if (size > MAX_FILE_BYTES) {
-          validationError = t(HomeStrings.fileTooLarge, language);
-          continue;
-        }
-        const isDuplicate = files.some(
-          (f) => f.name === asset.fileName && f.size === size
-        );
-        if (!isDuplicate) {
-          incoming.push({
-            uri: asset.uri,
-            name: asset.fileName ?? `photo_${Date.now()}.jpg`,
-            mimeType: mime,
-            size,
-          });
-        }
-      }
-
-      const merged = [...files, ...incoming];
-      if (merged.reduce((s, f) => s + f.size, 0) > MAX_TOTAL_BYTES) {
-        setError(t(HomeStrings.totalTooLarge, language));
-        return;
-      }
-      setFiles(merged);
-      if (validationError) setError(validationError);
-    },
-    [files, language]
-  );
-
-  const pickFromCamera = useCallback(async () => {
-    setShowSourceSheet(false);
-    setError(null);
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      setError(
-        language === 'bn' ? 'ক্যামেরার অনুমতি দিন' : 'Camera permission required'
-      );
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-      allowsEditing: false,
-    });
-    if (!result.canceled) addImageAssets(result.assets);
-  }, [language, addImageAssets]);
-
-  const pickFromGallery = useCallback(async () => {
-    setShowSourceSheet(false);
-    setError(null);
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      setError(
-        language === 'bn' ? 'গ্যালারির অনুমতি দিন' : 'Gallery permission required'
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 0.85,
-    });
-    if (!result.canceled) addImageAssets(result.assets);
-  }, [language, addImageAssets]);
-
-  const pickFiles = useCallback(async () => {
-    setShowSourceSheet(false);
-    setError(null);
-    const result = await DocumentPicker.getDocumentAsync({
-      type: [...ALLOWED_TYPES],
-      multiple: true,
-      copyToCacheDirectory: true,
-    });
-
-    if (result.canceled) return;
-
-    let validationError: string | null = null;
-    const incoming: UploadedFile[] = [];
-
-    for (const asset of result.assets) {
-      const mime = asset.mimeType ?? '';
-      const size = asset.size ?? 0;
-
-      if (!ALLOWED_TYPES.includes(mime as AllowedMime)) {
-        validationError = t(HomeStrings.unsupportedFormat, language);
-        continue;
-      }
-      if (size > MAX_FILE_BYTES) {
-        validationError = t(HomeStrings.fileTooLarge, language);
-        continue;
-      }
-      const isDuplicate = files.some(
-        (f) => f.name === asset.name && f.size === size
-      );
-      if (!isDuplicate) {
-        incoming.push({
-          uri: asset.uri,
-          name: asset.name,
-          mimeType: mime as AllowedMime,
-          size,
-        });
-      }
-    }
-
-    const merged = [...files, ...incoming];
-    if (merged.reduce((s, f) => s + f.size, 0) > MAX_TOTAL_BYTES) {
-      setError(t(HomeStrings.totalTooLarge, language));
-      return;
-    }
-    setFiles(merged);
-    if (validationError) setError(validationError);
-  }, [files, language]);
-
-  const removeFile = useCallback((index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-    setError(null);
-  }, []);
-
-  const handleAnalyze = useCallback(() => {
-    if (!canAnalyze) {
-      setError(t(HomeStrings.noFilesSelected, language));
-      return;
-    }
-    onAnalyze(files, language);
-  }, [canAnalyze, files, language, onAnalyze]);
 
   return (
     <>
@@ -183,11 +37,7 @@ export default function HomeScreen({ onAnalyze }: Props) {
         animationType="slide"
         onRequestClose={() => setShowSourceSheet(false)}
       >
-        <Pressable
-          style={styles.sheetBackdrop}
-          onPress={() => setShowSourceSheet(false)}
-        >
-          {/* Inner View stops backdrop tap from propagating through the sheet */}
+        <Pressable style={styles.sheetBackdrop} onPress={() => setShowSourceSheet(false)}>
           <Pressable style={styles.sheet} onPress={() => {}}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>
@@ -196,7 +46,7 @@ export default function HomeScreen({ onAnalyze }: Props) {
 
             <Pressable
               style={({ pressed }) => [styles.sheetOption, pressed && styles.sheetOptionPressed]}
-              onPress={pickFromCamera}
+              onPress={openCamera}
             >
               <View style={styles.sheetOptionIconWrap}>
                 <Ionicons name="camera-outline" size={28} color={Colors.primary} />
@@ -206,7 +56,7 @@ export default function HomeScreen({ onAnalyze }: Props) {
 
             <Pressable
               style={({ pressed }) => [styles.sheetOption, pressed && styles.sheetOptionPressed]}
-              onPress={pickFromGallery}
+              onPress={openGallery}
             >
               <View style={styles.sheetOptionIconWrap}>
                 <Ionicons name="images-outline" size={28} color={Colors.primary} />
@@ -216,7 +66,7 @@ export default function HomeScreen({ onAnalyze }: Props) {
 
             <Pressable
               style={({ pressed }) => [styles.sheetOption, pressed && styles.sheetOptionPressed]}
-              onPress={pickFiles}
+              onPress={openDocumentPicker}
             >
               <View style={styles.sheetOptionIconWrap}>
                 <Ionicons name="document-outline" size={28} color={Colors.primary} />
@@ -270,70 +120,23 @@ export default function HomeScreen({ onAnalyze }: Props) {
             </View>
           </View>
 
-          {/* ── Upload zone ── */}
-          <Pressable
-            style={({ pressed }) => [styles.uploadZone, pressed && styles.uploadZonePressed]}
-            onPress={() => setShowSourceSheet(true)}
-          >
-            <Ionicons name="cloud-upload-outline" size={48} color={Colors.primary} />
-            <Text style={styles.uploadTitle}>{t(HomeStrings.uploadButton, language)}</Text>
-            <Text style={styles.uploadHint}>{t(HomeStrings.uploadHint, language)}</Text>
-          </Pressable>
-
-          {/* ── Validation error ── */}
-          {error !== null && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {/* ── Selected files ── */}
-          {files.length > 0 && (
-            <View style={styles.fileCard}>
-              <View style={styles.fileCardHeader}>
-                <Text style={styles.fileCount}>
-                  {files.length} {t(HomeStrings.filesSelected, language)}
-                </Text>
-                <Text style={styles.totalSizeText}>
-                  {t(HomeStrings.totalSize, language)}: {formatSize(totalSize)}
-                </Text>
-              </View>
-
-              {files.map((file, index) => (
-                <View key={`${file.name}-${index}`} style={styles.fileRow}>
-                  <Ionicons
-                    name={file.mimeType === 'application/pdf' ? 'document-text-outline' : 'image-outline'}
-                    size={24}
-                    color={Colors.primary}
-                  />
-                  <View style={styles.fileInfo}>
-                    <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
-                      {file.name}
-                    </Text>
-                    <Text style={styles.fileSize}>{formatSize(file.size)}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => removeFile(index)}
-                    hitSlop={12}
-                    style={({ pressed }) => [styles.removeBtn, pressed && styles.removeBtnPressed]}
-                  >
-                    <Ionicons name="close" size={14} color={Colors.error} />
-                  </Pressable>
-                </View>
-              ))}
-
-              <Pressable style={styles.addMoreBtn} onPress={() => setShowSourceSheet(true)}>
-                <Text style={styles.addMoreText}>+ {t(HomeStrings.addMoreFiles, language)}</Text>
-              </Pressable>
-            </View>
-          )}
+          {/* ── Upload zone + file list ── */}
+          <UploadArea
+            files={files}
+            language={language}
+            error={error}
+            onOpenSourceSheet={() => setShowSourceSheet(true)}
+            onRemoveFile={removeFile}
+          />
         </ScrollView>
 
         {/* ── Analyze button (sticky bottom) ── */}
         <View style={styles.footer}>
           <Pressable
             style={[styles.analyzeBtn, !canAnalyze && styles.analyzeBtnDisabled]}
-            onPress={handleAnalyze}
+            onPress={() => {
+              if (canAnalyze) onAnalyze(files, language);
+            }}
             disabled={!canAnalyze}
           >
             <Text style={[styles.analyzeBtnText, !canAnalyze && styles.analyzeBtnTextDisabled]}>
@@ -351,8 +154,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-
-  // Header
   header: {
     alignItems: 'center',
     paddingTop: 20,
@@ -373,15 +174,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
-
-  // Scroll
   scroll: { flex: 1 },
   scrollContent: {
     padding: 20,
     gap: 16,
   },
-
-  // Language toggle
   langRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -416,122 +213,6 @@ const styles = StyleSheet.create({
   langBtnTextActive: {
     color: Colors.textOnPrimary,
   },
-
-  // Upload zone
-  uploadZone: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: Colors.primary,
-    borderRadius: 16,
-    backgroundColor: Colors.primaryLight,
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 8,
-  },
-  uploadZonePressed: {
-    backgroundColor: Colors.border,
-    borderColor: Colors.primaryDark,
-  },
-  uploadTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.primary,
-    textAlign: 'center',
-  },
-  uploadHint: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-
-  // Error
-  errorBox: {
-    backgroundColor: Colors.errorBg,
-    borderWidth: 1,
-    borderColor: Colors.error,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  errorText: {
-    color: Colors.error,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-
-  // File list card
-  fileCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  fileCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: Colors.surfaceSecondary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  fileCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
-  totalSizeText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  fileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 10,
-  },
-  fileInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  fileName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.textPrimary,
-  },
-  fileSize: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  removeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.errorBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  removeBtnPressed: {
-    backgroundColor: Colors.error,
-  },
-  addMoreBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  addMoreText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-
-  // Footer / Analyze button
   footer: {
     padding: 20,
     paddingBottom: 12,
@@ -564,8 +245,6 @@ const styles = StyleSheet.create({
   analyzeBtnTextDisabled: {
     color: Colors.textMuted,
   },
-
-  // Source picker bottom sheet
   sheetBackdrop: {
     flex: 1,
     backgroundColor: Colors.overlay,
