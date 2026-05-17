@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "VisaProof",
-    "slug": "VisaProof",
+    "slug": "visaproof",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -39,6 +39,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e9cf95ec-7935-45f7-820f-487d9e846d6b"
+      }
+    },
+    "owner": "smhabibjr"
   }
 }
