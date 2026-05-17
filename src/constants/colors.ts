@@ -1,3 +1,5 @@
+import type { RiskScore } from '@/types';
+
 export const Colors = {
   // Brand
   primary: '#006A4E',       // Bangladesh green
@@ -56,6 +58,3 @@ export const RiskColors: Record<RiskScore, { text: string; bg: string; border: s
   HIGH_RISK: { text: Colors.highRisk, bg: Colors.highRiskBg, border: Colors.highRisk },
   SCAM:      { text: Colors.scam,     bg: Colors.scamBg,     border: Colors.scam },
 };
-
-// RiskScore imported inline to avoid circular dep — mirrors types/index.ts
-type RiskScore = 'SAFE' | 'SUSPICIOUS' | 'HIGH_RISK' | 'SCAM';

@@ -1,6 +1,4 @@
-import type { Language } from '@/constants/strings';
-
-export type { Language };
+export type Language = 'bn' | 'en';
 
 // ---------------------------------------------------------------------------
 // Risk

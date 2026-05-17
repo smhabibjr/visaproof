@@ -1,4 +1,4 @@
-export type Language = 'bn' | 'en';
+import type { Language } from '@/types';
 
 type StringMap = Record<Language, string>;
 

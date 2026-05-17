@@ -3,17 +3,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useState } from 'react';
 
 import { HomeStrings, t } from '@/constants/strings';
+import { ALLOWED_TYPES, MAX_FILE_BYTES, MAX_TOTAL_BYTES } from '@/constants/upload';
+import type { AllowedMime } from '@/constants/upload';
 import type { Language, ValidatedFile } from '@/types';
+import { makeId } from '@/utils/id';
 import { validateFile } from '@/utils/fileValidator';
-
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 15 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'] as const;
-type AllowedMime = (typeof ALLOWED_TYPES)[number];
-
-function makeId(): string {
-  return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-}
 
 export interface UseFileUploadReturn {
   files: ValidatedFile[];
@@ -61,6 +55,23 @@ export function useFileUpload(): UseFileUploadReturn {
     });
   }, []);
 
+  // merged list তৈরি, total size check, state update, এবং validation শুরু — দুই picker এর shared logic
+  const commitFiles = useCallback(
+    (incoming: ValidatedFile[], validationError: string | null) => {
+      const merged = [...files, ...incoming];
+      if (merged.reduce((s, f) => s + f.size, 0) > MAX_TOTAL_BYTES) {
+        setError(t(HomeStrings.totalTooLarge, language));
+        return;
+      }
+      setFiles(merged);
+      if (validationError) setError(validationError);
+      for (const f of incoming) {
+        runValidation(f.id, { uri: f.uri, mimeType: f.mimeType, size: f.size });
+      }
+    },
+    [files, language, runValidation]
+  );
+
   // Image assets (camera + gallery) একসাথে process করা হয়
   const addImageAssets = useCallback(
     (assets: ImagePicker.ImagePickerAsset[]) => {
@@ -90,21 +101,9 @@ export function useFileUpload(): UseFileUploadReturn {
         }
       }
 
-      const merged = [...files, ...incoming];
-      if (merged.reduce((s, f) => s + f.size, 0) > MAX_TOTAL_BYTES) {
-        setError(t(HomeStrings.totalTooLarge, language));
-        return;
-      }
-
-      setFiles(merged);
-      if (validationError) setError(validationError);
-
-      // প্রতিটি নতুন file এর validation শুরু করা হয়
-      for (const f of incoming) {
-        runValidation(f.id, { uri: f.uri, mimeType: f.mimeType, size: f.size });
-      }
+      commitFiles(incoming, validationError);
     },
-    [files, language, runValidation]
+    [files, language, commitFiles]
   );
 
   const openCamera = useCallback(async () => {
@@ -180,19 +179,8 @@ export function useFileUpload(): UseFileUploadReturn {
       }
     }
 
-    const merged = [...files, ...incoming];
-    if (merged.reduce((s, f) => s + f.size, 0) > MAX_TOTAL_BYTES) {
-      setError(t(HomeStrings.totalTooLarge, language));
-      return;
-    }
-
-    setFiles(merged);
-    if (validationError) setError(validationError);
-
-    for (const f of incoming) {
-      runValidation(f.id, { uri: f.uri, mimeType: f.mimeType, size: f.size });
-    }
-  }, [files, language, runValidation]);
+    commitFiles(incoming, validationError);
+  }, [files, language, commitFiles]);
 
   const removeFile = useCallback((id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
