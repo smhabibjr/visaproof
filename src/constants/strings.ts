@@ -58,6 +58,11 @@ export const HomeStrings = {
   totalSize: s('মোট সাইজ', 'Total size'),
   languageLabel: s('রিপোর্টের ভাষা', 'Report language'),
 
+  uploadSheetTitle: s('কোথা থেকে নেবেন?', 'Choose source'),
+  camera: s('ক্যামেরা', 'Camera'),
+  gallery: s('গ্যালারি', 'Gallery'),
+  files: s('ফাইল', 'Files'),
+
   // Validation errors
   fileTooLarge: s('ফাইলটি ৫MB এর বেশি', 'File exceeds 5MB limit'),
   totalTooLarge: s('মোট সাইজ ১৫MB এর বেশি হওয়া যাবে না', 'Total size must not exceed 15MB'),
