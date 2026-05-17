@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -5,6 +7,7 @@ import { Colors } from '@/constants/colors';
 import { AppStrings, HomeStrings, t } from '@/constants/strings';
 import type { Language } from '@/types';
 import LanguageToggle from '@/components/LanguageToggle';
+import Sidebar from '@/components/Sidebar';
 import SourcePickerSheet from '@/components/SourcePickerSheet';
 import UploadArea from '@/components/UploadArea';
 import { useFileUpload } from '@/hooks/useFileUpload';
@@ -14,6 +17,8 @@ type Props = {
 };
 
 export default function HomeScreen({ onAnalyze }: Props) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const {
     files,
     language,
@@ -39,11 +44,30 @@ export default function HomeScreen({ onAnalyze }: Props) {
         language={language}
       />
 
+      <Sidebar
+        visible={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        language={language}
+      />
+
       <SafeAreaView style={styles.safe}>
         {/* ── Header ── */}
         <View style={styles.header}>
-          <Text style={styles.appName}>{t(AppStrings.appName, language)}</Text>
-          <Text style={styles.tagline}>{t(AppStrings.tagline, language)}</Text>
+          <Pressable
+            onPress={() => setSidebarOpen(true)}
+            hitSlop={12}
+            style={styles.menuBtn}
+          >
+            <Ionicons name="menu-outline" size={26} color={Colors.textPrimary} />
+          </Pressable>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.appName}>{t(AppStrings.appName, language)}</Text>
+            <Text style={styles.tagline}>{t(AppStrings.tagline, language)}</Text>
+          </View>
+
+          {/* Spacer to keep title centered */}
+          <View style={styles.menuBtn} />
         </View>
 
         <ScrollView
@@ -88,24 +112,32 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  menuBtn: {
+    width: 36,
+    alignItems: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
   appName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: 0.5,
   },
   tagline: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
   scroll: { flex: 1 },
   scrollContent: {
