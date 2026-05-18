@@ -9,17 +9,15 @@ import { formatSize } from '@/utils/format';
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const STATUS_COLOR: Record<ValidationStatus, string> = {
-  checking:   Colors.textSecondary,
-  good:       Colors.success,
-  acceptable: Colors.warning,
-  poor:       Colors.error,
+  checking: Colors.textSecondary,
+  ready:    Colors.success,
+  error:    Colors.error,
 };
 
 const STATUS_ICON: Record<ValidationStatus, IoniconName> = {
-  checking:   'time-outline',
-  good:       'checkmark-circle',
-  acceptable: 'warning',
-  poor:       'close-circle',
+  checking: 'time-outline',
+  ready:    'checkmark-circle',
+  error:    'close-circle',
 };
 
 type Props = {
@@ -34,24 +32,16 @@ export default function FileRow({ file, language, onRemove }: Props) {
   const statusIcon  = STATUS_ICON[status];
 
   const statusLabel =
-    status === 'good'       ? t(ValidationStrings.good, language) :
-    status === 'acceptable' ? t(ValidationStrings.acceptable, language) :
-    status === 'poor'       ? t(ValidationStrings.poor, language) :
+    status === 'ready'    ? (language === 'bn' ? 'প্রস্তুত' : 'Ready') :
+    status === 'error'    ? '' :
     t(ValidationStrings.checking, language);
 
-  const poorReason =
-    language === 'bn'
-      ? validationResult?.reasonBn
-      : validationResult?.reasonEn;
-
   const reasonText =
-    status === 'poor' && poorReason
-      ? poorReason
-      : status === 'acceptable'
-        ? t(ValidationStrings.acceptableWarning, language)
-        : null;
+    status === 'error' && validationResult
+      ? (language === 'bn' ? validationResult.reasonBn : validationResult.reasonEn)
+      : null;
 
-  const reasonColor = status === 'poor' ? Colors.error : Colors.warning;
+  const reasonColor = Colors.error;
 
   const fileIcon: IoniconName =
     file.mimeType === 'application/pdf' ? 'document-text-outline' : 'image-outline';

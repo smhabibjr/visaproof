@@ -204,6 +204,23 @@ export const ValidationStrings = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Analysis / Loading screen
+// ---------------------------------------------------------------------------
+export const AnalysisStrings = {
+  statusPreparing:   s('ডকুমেন্ট প্রস্তুত করা হচ্ছে...', 'Preparing documents...'),
+  statusAnalyzing:   s('AI বিশ্লেষণ চলছে...', 'AI analysis in progress...'),
+  statusDone:        s('সম্পন্ন! রিপোর্ট তৈরি হয়েছে', 'Done! Report ready'),
+  estimatedTime:     s('এটি ৩০-৬০ সেকেন্ড সময় নিতে পারে', 'This may take 30–60 seconds'),
+  retryButton:       s('আবার চেষ্টা করুন', 'Try Again'),
+  errorNetwork:      s('ইন্টারনেট সংযোগ পরীক্ষা করুন', 'Check your internet connection'),
+  errorApiKey:       s('API সমস্যা হয়েছে, পরে চেষ্টা করুন', 'API error, please try later'),
+  errorFileTooLarge: s('ফাইল অনেক বড়, ছোট ফাইল ব্যবহার করুন', 'File too large, use a smaller file'),
+  errorParse:        s('রিপোর্ট তৈরিতে সমস্যা হয়েছে, আবার চেষ্টা করুন', 'Report generation failed, try again'),
+  errorTimeout:      s('সময় শেষ হয়ে গেছে, আবার চেষ্টা করুন', 'Timed out, try again'),
+  errorUnknown:      s('কিছু একটা ভুল হয়েছে, আবার চেষ্টা করুন', 'Something went wrong, try again'),
+} as const;
+
+// ---------------------------------------------------------------------------
 // Helper to get string by language
 // ---------------------------------------------------------------------------
 export function t(map: StringMap, lang: Language): string {

@@ -91,17 +91,14 @@ export interface UploadedFile {
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
-export type ValidationStatus = 'checking' | 'good' | 'acceptable' | 'poor';
-export type QualityLabel = 'GOOD' | 'ACCEPTABLE' | 'POOR';
+export type ValidationStatus = 'checking' | 'ready' | 'error';
 
 export interface ValidationResult {
   isReadable: boolean;
-  reason: string;        // English key (e.g. 'blur', 'dark', 'ok')
-  reasonBn: string;      // Bengali message shown to user
-  reasonEn: string;      // English message shown to user
-  checkedAt: string;     // ISO date string
-  qualityScore: number;  // 0–100
-  qualityLabel: QualityLabel;
+  reason: string;    // short key (e.g. 'ok', 'too_small', 'pdf_empty')
+  reasonBn: string;  // Bengali message shown to user
+  reasonEn: string;  // English message shown to user
+  checkedAt: string; // ISO date string
 }
 
 export interface ValidatedFile extends UploadedFile {
@@ -127,6 +124,13 @@ export interface AnalysisRequest {
   files: UploadedFile[];
   language: Language;
   payment: PaymentDetails;
+}
+
+// Payment skip করে সরাসরি analysis এর জন্য (Feature 6)
+export interface AnalyzeParams {
+  files: UploadedFile[];
+  language: Language;
+  reportId: string;
 }
 
 // ---------------------------------------------------------------------------

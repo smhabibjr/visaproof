@@ -29,22 +29,19 @@ export function useFileUpload(): UseFileUploadReturn {
   const [error, setError] = useState<string | null>(null);
   const [showSourceSheet, setShowSourceSheet] = useState(false);
 
-  // 'good' এবং 'acceptable' দুটোই Analyze এর জন্য যথেষ্ট; 'poor' বা 'checking' block করে
+  // 'checking' block করে; 'ready' হলেই Analyze চলবে
   const canAnalyze =
     files.length > 0 &&
-    files.every((f) => f.validationStatus === 'good' || f.validationStatus === 'acceptable');
+    files.every((f) => f.validationStatus === 'ready');
 
   // যাচাই শেষ হলে file এর status update করা হয়
-  const runValidation = useCallback((id: string, file: { uri: string; mimeType: string; size: number }) => {
+  const runValidation = useCallback((id: string, file: { uri: string; name: string; mimeType: string; size: number }) => {
     validateFile(file).then((result) => {
       setFiles((prev) => {
         // file remove হয়ে গেলে ignore করা হয়
         if (!prev.find((f) => f.id === id)) return prev;
 
-        const status =
-          result.qualityLabel === 'GOOD' ? 'good' :
-          result.qualityLabel === 'ACCEPTABLE' ? 'acceptable' :
-          'poor';
+        const status = result.isReadable ? 'ready' : 'error';
 
         return prev.map((f) =>
           f.id === id
@@ -66,7 +63,7 @@ export function useFileUpload(): UseFileUploadReturn {
       setFiles(merged);
       if (validationError) setError(validationError);
       for (const f of incoming) {
-        runValidation(f.id, { uri: f.uri, mimeType: f.mimeType, size: f.size });
+        runValidation(f.id, { uri: f.uri, name: f.name, mimeType: f.mimeType, size: f.size });
       }
     },
     [files, language, runValidation]
