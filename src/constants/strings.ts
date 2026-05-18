@@ -169,8 +169,8 @@ export const HistoryStrings = {
     'This report will be permanently deleted.'
   ),
   storageWarning: s(
-    '⚠️ সব ডেটা এই ডিভাইসে সংরক্ষিত। অ্যাপ আনইনস্টল করলে সব রিপোর্ট মুছে যাবে।',
-    '⚠️ All data is stored on this device only. Uninstalling the app will delete all reports.'
+    'সব ডেটা এই ডিভাইসে সংরক্ষিত। অ্যাপ আনইনস্টল করলে সব রিপোর্ট মুছে যাবে।',
+    'All data is stored on this device only. Uninstalling the app will delete all reports.'
   ),
   maxReportsWarning: s(
     'সর্বোচ্চ ৫০টি রিপোর্ট সংরক্ষণ করা যাবে। পুরনো রিপোর্ট স্বয়ংক্রিয়ভাবে মুছে যাবে।',
