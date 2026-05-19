@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80">
+  <!-- icon part (mini logo) -->
+  <rect x="4" y="4" width="72" height="72" rx="14" fill="#1e3a5f"/>
+  <rect x="18" y="16" width="26" height="34" rx="3" fill="#2563eb"/>
+  <rect x="18" y="16" width="4" height="34" rx="2" fill="#1d4ed8"/>
+  <line x1="25" y1="23" x2="40" y2="23" stroke="#93c5fd" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="25" y1="29" x2="40" y2="29" stroke="#93c5fd" stroke-width="1.8" stroke-linecap="round"/>
+  <rect x="25" y="34" width="8" height="8" rx="1" fill="#1d4ed8" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="29" cy="36" r="1.5" fill="#93c5fd"/>
+  <path d="M26,42 Q29,39 32,42" fill="#93c5fd"/>
+  <!-- shield -->
+  <path d="M43,38 L58,32 L58,44 Q58,55 43,61 Q28,55 28,44 L28,32 Z" fill="#059669"/>
+  <polyline points="36,46 42,52 54,37" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- wordmark text -->
+  <text x="92" y="34" font-family="Arial, sans-serif" font-size="13" font-weight="400" fill="#64748b" letter-spacing="2">VISA</text>
+  <text x="90" y="58" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#1e3a5f" letter-spacing="1">Proof</text>
+  <!-- checkmark dot on the o -->
+  <circle cx="238" cy="32" r="7" fill="#2563eb" opacity="0.15"/>
+  <polyline points="233,32 237,37 244,26" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- tagline -->
+  <text x="92" y="74" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" letter-spacing="0.5">Verify before you trust</text>
+</svg>

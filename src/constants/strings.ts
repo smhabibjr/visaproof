@@ -137,8 +137,10 @@ export const ReportStrings = {
   positivePoints: s('ইতিবাচক দিক', 'Positive Points'),
   recommendedActions: s('পরামর্শ', 'Recommended Actions'),
   disclaimer: s('দায়মুক্তি', 'Disclaimer'),
-  downloadPDF: s('PDF ডাউনলোড করুন', 'Download PDF'),
-  shareReport: s('রিপোর্ট শেয়ার করুন', 'Share Report'),
+  downloadPDF:    s('PDF ডাউনলোড করুন', 'Download PDF'),
+  shareReport:    s('রিপোর্ট শেয়ার করুন', 'Share Report'),
+  generatingPDF:  s('PDF তৈরি হচ্ছে...', 'Generating PDF...'),
+  pdfError:       s('PDF তৈরি করা যায়নি', 'Could not generate PDF'),
 
   // Boolean labels
   yes: s('হ্যাঁ', 'Yes'),
