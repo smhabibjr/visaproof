@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Animated,
   Dimensions,
@@ -90,7 +90,14 @@ export default function Sidebar({ visible, onClose, language }: Props) {
   const insets  = useSafeAreaInsets();
   const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
-  const { reports, loading, deleteReport } = useReports();
+  const { reports, loading, deleteReport, refreshReports } = useReports();
+
+  // Sidebar খোলার সময় সবসময় fresh data নেওয়া হয়
+  useEffect(() => {
+    if (visible) {
+      refreshReports();
+    }
+  }, [visible, refreshReports]);
 
   // Animate in/out যখন visible পরিবর্তন হয়
   Animated.timing(translateX, {

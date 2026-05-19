@@ -138,6 +138,7 @@ export const ReportStrings = {
   recommendedActions: s('পরামর্শ', 'Recommended Actions'),
   disclaimer: s('দায়মুক্তি', 'Disclaimer'),
   downloadPDF: s('PDF ডাউনলোড করুন', 'Download PDF'),
+  shareReport: s('রিপোর্ট শেয়ার করুন', 'Share Report'),
 
   // Boolean labels
   yes: s('হ্যাঁ', 'Yes'),

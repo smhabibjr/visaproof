@@ -1,25 +1,207 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, RiskColors } from '@/constants/colors';
+import InfoRow from '@/components/InfoRow';
+import ReportCard from '@/components/ReportCard';
+import { Colors } from '@/constants/colors';
 import { ReportStrings, t } from '@/constants/strings';
 import { getReportById } from '@/storage/reportStorage';
-import type { FullReport, RiskScore } from '@/types';
+import type { FullReport, GrammarQuality, Language, RiskScore } from '@/types';
 
-type Props = { reportId: string };
+// ── Banner background per risk level ────────────────────────────────────────
+const RISK_BANNER_BG: Record<RiskScore, string> = {
+  SAFE:       '#16a34a',
+  SUSPICIOUS: '#ca8a04',
+  HIGH_RISK:  '#ea580c',
+  SCAM:       '#dc2626',
+};
 
-function RiskBadge({ riskScore }: { riskScore: RiskScore }) {
-  const palette = RiskColors[riskScore];
-  const label   = t(ReportStrings.riskLabels[riskScore], 'en');
+// ── Bengali date helpers ─────────────────────────────────────────────────────
+const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
+const BN_MONTHS = [
+  'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+  'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর',
+];
+const EN_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function toBn(n: number): string {
+  return String(n)
+    .split('')
+    .map((c) => BN_DIGITS[parseInt(c)] ?? c)
+    .join('');
+}
+
+function formatDate(iso: string, lang: Language): string {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const day   = d.getDate();
+    const month = d.getMonth();
+    const year  = d.getFullYear();
+    if (lang === 'bn') return `${toBn(day)} ${BN_MONTHS[month]}, ${toBn(year)}`;
+    return `${day} ${EN_MONTHS[month]}, ${year}`;
+  } catch {
+    return iso;
+  }
+}
+
+// ── Misc helpers ─────────────────────────────────────────────────────────────
+function safe(value: string | null | undefined, lang: Language): string {
+  if (!value) return lang === 'bn' ? 'তথ্য নেই' : 'N/A';
+  return value;
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, n));
+}
+
+function grammarLabel(
+  q: GrammarQuality | string | undefined,
+  lang: Language,
+): { text: string; color: string } {
+  switch (q) {
+    case 'GOOD':
+      return { text: lang === 'bn' ? 'ভালো' : 'Good', color: Colors.success };
+    case 'POOR':
+      return { text: lang === 'bn' ? 'দুর্বল' : 'Poor', color: Colors.warning };
+    case 'VERY_POOR':
+      return { text: lang === 'bn' ? 'খুব দুর্বল' : 'Very Poor', color: Colors.error };
+    default:
+      return { text: lang === 'bn' ? 'তথ্য নেই' : 'N/A', color: Colors.textMuted };
+  }
+}
+
+// ── Share text builder ───────────────────────────────────────────────────────
+
+function buildShareText(report: FullReport): string {
+  const lang = report.language ?? 'bn';
+  const a    = report.analysis;
+  const uv   = a.universityVerification;
+  const isBn = lang === 'bn';
+
+  const bullet = (items: string[]) =>
+    items.length ? items.map((s) => `• ${s}`).join('\n') : (isBn ? '—' : '—');
+
+  const numbered = (items: string[]) =>
+    items.length ? items.map((s, i) => `${i + 1}. ${s}`).join('\n') : (isBn ? '—' : '—');
+
+  const riskLabel = isBn
+    ? { SAFE: 'নিরাপদ', SUSPICIOUS: 'সন্দেহজনক', HIGH_RISK: 'উচ্চ ঝুঁকি', SCAM: 'স্ক্যাম' }[a.riskScore]
+    : a.riskScore;
+
+  const pct = `${Math.min(100, Math.max(0, a.riskPercentage ?? 0))}%`;
+
+  const lines = isBn ? [
+    'VisaProof বিশ্লেষণ রিপোর্ট',
+    '══════════════════════════',
+    `বিশ্ববিদ্যালয়: ${safe(uv?.name, lang)}`,
+    `ঝুঁকির মাত্রা: ${riskLabel} — ${pct}`,
+    `তারিখ: ${formatDate(report.createdAt, lang)}`,
+    '',
+    'সারসংক্ষেপ:',
+    safe(a.summary, lang),
+    '',
+    '🚩 সতর্কতা:',
+    bullet(a.redFlags ?? []),
+    '',
+    '✅ ইতিবাচক দিক:',
+    bullet(a.positivePoints ?? []),
+    '',
+    '📋 পরামর্শ:',
+    numbered(a.recommendedActions ?? []),
+    '',
+    '──────────────────────────',
+    'এই রিপোর্ট VisaProof AI দ্বারা তৈরি।',
+  ] : [
+    'VisaProof Analysis Report',
+    '══════════════════════════',
+    `University: ${safe(uv?.name, lang)}`,
+    `Risk Level: ${riskLabel} — ${pct}`,
+    `Date: ${formatDate(report.createdAt, lang)}`,
+    '',
+    'Summary:',
+    safe(a.summary, lang),
+    '',
+    '🚩 Red Flags:',
+    bullet(a.redFlags ?? []),
+    '',
+    '✅ Positive Points:',
+    bullet(a.positivePoints ?? []),
+    '',
+    '📋 Recommendations:',
+    numbered(a.recommendedActions ?? []),
+    '',
+    '──────────────────────────',
+    'This report was generated by VisaProof AI.',
+  ];
+
+  return lines.join('\n');
+}
+
+// ── Sub-components ───────────────────────────────────────────────────────────
+
+function NavHeader() {
   return (
-    <View style={[styles.badge, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-      <Text style={[styles.badgeText, { color: palette.text }]}>{label}</Text>
+    <View style={styles.header}>
+      <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBack}>
+        <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+      </Pressable>
+      <Text style={styles.headerTitle}>বিশ্লেষণ রিপোর্ট</Text>
+      <View style={styles.headerSpacer} />
     </View>
   );
 }
+
+function PercentageCircle({ percentage }: { percentage: number }) {
+  const pct = clamp(percentage || 0, 0, 100);
+  return (
+    <View style={styles.circle}>
+      <Text style={styles.circlePercent}>{pct}%</Text>
+      <Text style={styles.circleLabel}>Risk</Text>
+    </View>
+  );
+}
+
+function SuspiciousSubSection({
+  items,
+  lang,
+}: {
+  items: string[];
+  lang: Language;
+}) {
+  if (!items.length) return null;
+  return (
+    <View style={styles.suspiciousBox}>
+      <Text style={styles.suspiciousTitle}>
+        {lang === 'bn' ? 'সন্দেহজনক বিষয়' : 'Suspicious Elements'}
+      </Text>
+      {items.map((item, i) => (
+        <View key={i} style={styles.suspiciousRow}>
+          <Ionicons name="warning" size={14} color={Colors.error} />
+          <Text style={styles.suspiciousText}>{item}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ── Screen ───────────────────────────────────────────────────────────────────
+
+type Props = { reportId: string };
 
 export default function ReportScreen({ reportId }: Props) {
   const [report, setReport] = useState<FullReport | null>(null);
@@ -32,49 +214,326 @@ export default function ReportScreen({ reportId }: Props) {
     });
   }, [reportId]);
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t(ReportStrings.title, 'en')}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      {/* Content */}
-      {loading ? (
+  // ── Loading ──
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <NavHeader />
         <View style={styles.center}>
-          <ActivityIndicator color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>লোড হচ্ছে...</Text>
         </View>
-      ) : report === null ? (
-        // Dummy report এর জন্য placeholder
+      </SafeAreaView>
+    );
+  }
+
+  // ── Not found ──
+  if (!report) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <NavHeader />
         <View style={styles.center}>
           <Ionicons name="document-text-outline" size={56} color={Colors.textMuted} />
-          <Text style={styles.placeholderTitle}>{reportId}</Text>
-          <Text style={styles.placeholderNote}>
-            Full report UI — Feature 8 এ implement হবে
-          </Text>
+          <Text style={styles.notFoundText}>রিপোর্ট পাওয়া যায়নি</Text>
+          <Pressable style={styles.centreBtn} onPress={() => router.back()}>
+            <Text style={styles.centreBtnText}>পেছনে যান</Text>
+          </Pressable>
         </View>
-      ) : (
-        <View style={styles.content}>
-          <Text style={styles.title}>{report.title}</Text>
-          <RiskBadge riskScore={report.analysis.riskScore} />
-          <Text style={styles.placeholderNote}>
-            Full report UI — Feature 8 এ implement হবে
-          </Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Main render (try/catch গোটা JSX বিল্ডকে guard করে) ──
+  try {
+    const lang   = report.language ?? 'bn';
+    const a      = report.analysis;
+    const bannerBg    = RISK_BANNER_BG[a.riskScore] ?? '#6b7280';
+    const riskLabel   = t(ReportStrings.riskLabels[a.riskScore], lang);
+    const uv  = a.universityVerification;
+    const ol  = a.offerLetterAnalysis;
+    const inv = a.invoiceAnalysis;
+    const grammar = grammarLabel(ol?.grammarQuality, lang);
+
+    const lbl = (bn: string, en: string) => (lang === 'bn' ? bn : en);
+
+    return (
+      <SafeAreaView style={styles.safe}>
+        <NavHeader />
+
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Section 1: Risk Score Banner ── */}
+          <View style={[styles.banner, { backgroundColor: bannerBg }]}>
+            <View style={styles.bannerTop}>
+              <View style={styles.bannerLeft}>
+                <Text style={styles.bannerRiskLabel}>{riskLabel}</Text>
+                <Text style={styles.bannerDate}>
+                  {formatDate(report.createdAt, lang)}
+                </Text>
+              </View>
+              <PercentageCircle percentage={a.riskPercentage} />
+            </View>
+            <Text style={styles.bannerSummary}>{safe(a.summary, lang)}</Text>
+          </View>
+
+          {/* ── Section 2: University Verification ── */}
+          <ReportCard title={t(ReportStrings.universityVerification, lang)}>
+            <InfoRow
+              label={lbl('বিশ্ববিদ্যালয়', 'University')}
+              value={safe(uv?.name, lang)}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('দেশ', 'Country')}
+              value={safe(uv?.country, lang)}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('প্রতিষ্ঠা বছর', 'Founded')}
+              value={safe(uv?.foundedYear, lang)}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('স্বীকৃতিপ্রাপ্ত', 'Accredited')}
+              value={uv?.isAccredited ?? null}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('স্বীকৃতি প্রদানকারী', 'Accreditation By')}
+              value={safe(uv?.accreditationBody, lang)}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('রেজিস্ট্রেশন নম্বর', 'Reg. Number')}
+              value={safe(uv?.registrationNumber, lang)}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('অফিশিয়াল ওয়েবসাইট', 'Official Website')}
+              value={uv?.officialWebsite || null}
+              lang={lang}
+              isLink={!!uv?.officialWebsite}
+            />
+            <InfoRow
+              label={lbl('ওয়েবসাইট মিলেছে', 'Website Match')}
+              value={uv?.websiteMatch ?? null}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('UGC স্বীকৃত', 'UGC Recognized')}
+              value={uv?.ugcRecognized ?? null}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('বিশ্ব র‍্যাংকিং', 'World Ranking')}
+              value={safe(uv?.worldRanking, lang)}
+              lang={lang}
+            />
+            {uv?.verdict ? (
+              <Text style={styles.verdict}>{uv.verdict}</Text>
+            ) : null}
+          </ReportCard>
+
+          {/* ── Section 3: Offer Letter Analysis ── */}
+          <ReportCard title={t(ReportStrings.offerLetterAnalysis, lang)}>
+            <InfoRow
+              label={lbl('অফিশিয়াল লেটারহেড', 'Official Letterhead')}
+              value={ol?.hasOfficialLetterhead ?? null}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('ইমেইল ডোমেইন বৈধ', 'Email Legitimate')}
+              value={ol?.emailDomainLegitimate ?? null}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('শনাক্ত ইমেইল', 'Detected Email')}
+              value={safe(ol?.detectedEmail, lang)}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('ডিজিটাল স্বাক্ষর', 'Digital Signature')}
+              value={ol?.hasDigitalSignature ?? null}
+              lang={lang}
+            />
+            <InfoRow
+              label={lbl('ব্যাকরণের মান', 'Grammar Quality')}
+              value={grammar.text}
+              lang={lang}
+              valueColor={grammar.color}
+            />
+            <SuspiciousSubSection items={ol?.suspiciousElements ?? []} lang={lang} />
+            {ol?.verdict ? (
+              <Text style={styles.verdict}>{ol.verdict}</Text>
+            ) : null}
+          </ReportCard>
+
+          {/* ── Section 4: Invoice Analysis (only if found) ── */}
+          {inv?.found === true && (
+            <ReportCard title={t(ReportStrings.invoiceAnalysis, lang)}>
+              <InfoRow
+                label={lbl('পেমেন্ট গন্তব্য', 'Payment Destination')}
+                value={safe(inv.paymentDestination, lang)}
+                lang={lang}
+              />
+              <InfoRow
+                label={lbl('ব্যক্তিগত অ্যাকাউন্ট', 'Personal Account')}
+                value={inv.isPersonalAccount ?? null}
+                lang={lang}
+                highlight={inv.isPersonalAccount === true ? 'danger' : undefined}
+              />
+              <InfoRow
+                label={lbl('পরিমাণ যুক্তিসংগত', 'Amount Reasonable')}
+                value={inv.amountReasonable ?? null}
+                lang={lang}
+              />
+              <InfoRow
+                label={lbl('মুদ্রা', 'Currency')}
+                value={safe(inv.currency, lang)}
+                lang={lang}
+              />
+              <InfoRow
+                label={lbl('পেমেন্ট পদ্ধতি', 'Payment Method')}
+                value={safe(inv.paymentMethod, lang)}
+                lang={lang}
+              />
+              <SuspiciousSubSection items={inv.suspiciousElements ?? []} lang={lang} />
+              {inv.verdict ? (
+                <Text style={styles.verdict}>{inv.verdict}</Text>
+              ) : null}
+            </ReportCard>
+          )}
+
+          {/* ── Section 5: Red Flags & Positive Points ── */}
+          <ReportCard
+            title={lbl('সতর্কতা ও ইতিবাচক দিক', 'Flags & Positives')}
+          >
+            {/* Red Flags */}
+            <Text style={styles.flagHeading}>
+              {lbl('🚩 সতর্কতা', '🚩 Red Flags')}
+            </Text>
+            {(a.redFlags ?? []).length === 0 ? (
+              <Text style={styles.flagEmptyGood}>
+                {lbl('কোনো সতর্কতা নেই', 'No red flags found')}
+              </Text>
+            ) : (
+              <View style={styles.chipList}>
+                {(a.redFlags ?? []).map((flag, i) => (
+                  <View key={i} style={styles.redChip}>
+                    <Ionicons name="alert-circle" size={13} color={Colors.error} />
+                    <Text style={styles.redChipText}>{flag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.flagDivider} />
+
+            {/* Positive Points */}
+            <Text style={styles.flagHeading}>
+              {lbl('✅ ইতিবাচক দিক', '✅ Positive Points')}
+            </Text>
+            {(a.positivePoints ?? []).length === 0 ? (
+              <Text style={styles.flagEmptyNeutral}>
+                {lbl('কোনো ইতিবাচক দিক পাওয়া যায়নি', 'No positive points found')}
+              </Text>
+            ) : (
+              <View style={styles.chipList}>
+                {(a.positivePoints ?? []).map((pt, i) => (
+                  <View key={i} style={styles.greenChip}>
+                    <Ionicons name="checkmark-circle" size={13} color={Colors.success} />
+                    <Text style={styles.greenChipText}>{pt}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ReportCard>
+
+          {/* ── Section 6: Recommended Actions ── */}
+          <ReportCard title={t(ReportStrings.recommendedActions, lang)}>
+            {(a.recommendedActions ?? []).length === 0 ? (
+              <Text style={styles.emptyActions}>
+                {lbl('কোনো পরামর্শ নেই', 'No recommendations')}
+              </Text>
+            ) : (
+              (a.recommendedActions ?? []).map((action, i) => (
+                <View key={i} style={styles.actionRow}>
+                  <View style={styles.actionNum}>
+                    <Text style={styles.actionNumText}>{i + 1}</Text>
+                  </View>
+                  <Text style={styles.actionText}>{action}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.info} />
+                </View>
+              ))
+            )}
+          </ReportCard>
+
+          {/* ── Section 7: Disclaimer ── */}
+          {!!a.disclaimer && (
+            <View style={styles.disclaimerBox}>
+              <Text style={styles.disclaimerText}>{a.disclaimer}</Text>
+            </View>
+          )}
+
+          {/* নিচের fixed bar এর জন্য spacer */}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+
+        {/* ── Fixed Bottom Bar ── */}
+        <View style={styles.bottomBar}>
+          <Pressable style={styles.bottomBackBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={17} color={Colors.textPrimary} />
+            <Text style={styles.bottomBackText}>
+              {lang === 'bn' ? 'পেছনে যান' : 'Go Back'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.bottomPdfBtn}
+            onPress={() => {
+              Share.share({
+                message: buildShareText(report),
+                title: 'VisaProof Report',
+              }).catch(() => {});
+            }}
+          >
+            <Ionicons name="share-social-outline" size={17} color={Colors.textOnPrimary} />
+            <Text style={styles.bottomPdfText}>
+              {t(ReportStrings.shareReport, lang)}
+            </Text>
+          </Pressable>
         </View>
-      )}
-    </SafeAreaView>
-  );
+      </SafeAreaView>
+    );
+  } catch {
+    // যদি কোনো কারণে রেন্ডার crash করে → fallback দেখাও
+    return (
+      <SafeAreaView style={styles.safe}>
+        <NavHeader />
+        <View style={styles.center}>
+          <Ionicons name="alert-circle-outline" size={56} color={Colors.error} />
+          <Text style={styles.notFoundText}>রিপোর্ট দেখাতে সমস্যা হয়েছে</Text>
+          <Pressable style={styles.centreBtn} onPress={() => router.back()}>
+            <Text style={styles.centreBtnText}>পেছনে যান</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: Colors.background,
   },
+
+  // Nav header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -84,7 +543,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  backBtn: {
+  headerBack: {
     width: 36,
   },
   headerTitle: {
@@ -97,44 +556,301 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 36,
   },
+
+  // Scroll
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 0,
+    paddingBottom: 16,
+  },
+
+  // Loading / center states
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 14,
     paddingHorizontal: 32,
   },
-  content: {
-    flex: 1,
-    padding: 24,
-    gap: 16,
-    alignItems: 'flex-start',
+  loadingText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  placeholderTitle: {
-    fontSize: 15,
+  notFoundText: {
+    fontSize: 16,
     fontWeight: '600',
     color: Colors.textSecondary,
     textAlign: 'center',
   },
-  placeholderNote: {
+  centreBtn: {
+    marginTop: 4,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+  },
+  centreBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textOnPrimary,
+  },
+
+  // Risk Score Banner
+  banner: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    marginBottom: 16,
+  },
+  bannerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  bannerLeft: {
+    flex: 1,
+    gap: 4,
+  },
+  bannerRiskLabel: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  bannerDate: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  bannerSummary: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.95)',
+    lineHeight: 21,
+  },
+
+  // Circular percentage
+  circle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
+  circlePercent: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#ffffff',
+    lineHeight: 22,
+  },
+  circleLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+
+  // Verdict text inside cards
+  verdict: {
+    marginTop: 12,
+    marginBottom: 4,
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: Colors.textSecondary,
+    lineHeight: 19,
+  },
+
+  // Suspicious sub-section
+  suspiciousBox: {
+    marginTop: 10,
+    backgroundColor: Colors.errorBg,
+    borderRadius: 8,
+    padding: 12,
+    gap: 6,
+  },
+  suspiciousTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.error,
+    marginBottom: 2,
+  },
+  suspiciousRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  suspiciousText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.error,
+    lineHeight: 18,
+  },
+
+  // Flags & Positives section
+  flagHeading: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  flagEmptyGood: {
+    fontSize: 13,
+    color: Colors.success,
+    fontStyle: 'italic',
+    marginBottom: 6,
+  },
+  flagEmptyNeutral: {
     fontSize: 13,
     color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
+    fontStyle: 'italic',
+    marginBottom: 6,
+  },
+  flagDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 12,
+  },
+  chipList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  redChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.errorBg,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  redChipText: {
+    fontSize: 12,
+    color: Colors.error,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  greenChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.successBg,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  greenChipText: {
+    fontSize: 12,
+    color: Colors.success,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+
+  // Recommended Actions
+  emptyActions: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    paddingVertical: 8,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 10,
+  },
+  actionNum: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.infoBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionNumText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.info,
+  },
+  actionText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textPrimary,
+    lineHeight: 19,
+  },
+
+  // Disclaimer
+  disclaimerBox: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: 10,
+    padding: 14,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+
+  bottomSpacer: {
+    height: 8,
+  },
+
+  // Fixed bottom bar
+  bottomBar: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  bottomBackBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  bottomBackText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  bottomPdfBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+  },
+  bottomPdfText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textOnPrimary,
   },
 });
