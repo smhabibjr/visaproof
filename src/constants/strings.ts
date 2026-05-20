@@ -153,6 +153,40 @@ export const ReportStrings = {
   grammarGood: s('ভালো', 'Good'),
   grammarPoor: s('দুর্বল', 'Poor'),
   grammarVeryPoor: s('খুব দুর্বল', 'Very Poor'),
+
+  // New section titles
+  crossDocumentCheck:    s('ক্রস-ডকুমেন্ট যাচাই', 'Cross-Document Check'),
+  programmeAnalysis:     s('প্রোগ্রাম বিশ্লেষণ', 'Programme Analysis'),
+  agentVerification:     s('এজেন্ট যাচাই', 'Agent Verification'),
+  bangladeshRisks:       s('বাংলাদেশ-নির্দিষ্ট ঝুঁকি', 'Bangladesh-Specific Risks'),
+  officialLinks:         s('অফিশিয়াল যাচাই লিংক', 'Official Verification Links'),
+
+  // Cross-document field labels
+  docsAnalyzed:          s('বিশ্লেষিত ডকুমেন্ট', 'Documents Analyzed'),
+  nameConsistent:        s('নাম সামঞ্জস্যপূর্ণ', 'Name Consistent'),
+  bankDetailsConsistent: s('ব্যাংক বিবরণ সামঞ্জস্যপূর্ণ', 'Bank Details Consistent'),
+  datesLogical:          s('তারিখের ক্রম সঠিক', 'Dates Logical'),
+  inconsistenciesFound:  s('অসামঞ্জস্য পাওয়া গেছে', 'Inconsistencies Found'),
+
+  // Agent field labels
+  agentNameLabel:        s('এজেন্টের নাম', 'Agent Name'),
+  agentCompany:          s('এজেন্সি', 'Agency'),
+  maraRegistered:        s('MARA নিবন্ধিত', 'MARA Registered'),
+  icefCertified:         s('ICEF প্রত্যয়িত', 'ICEF Certified'),
+  bmetRegistered:        s('BMET নিবন্ধিত', 'BMET Registered'),
+  pressureTactics:       s('চাপের কৌশল শনাক্ত', 'Pressure Tactics Detected'),
+
+  // Programme field labels
+  programmeType:         s('প্রোগ্রামের ধরন', 'Programme Type'),
+  vetWarningLabel:       s('VET সতর্কতা', 'VET Warning'),
+  topUpWarningLabel:     s('Top-up সতর্কতা', 'Top-up Warning'),
+  bdRecognitionConcern:  s('বাংলাদেশে স্বীকৃতির উদ্বেগ', 'BD Recognition Concern'),
+  prPathwayConcern:      s('PR পথ উদ্বেগ', 'PR Pathway Concern'),
+  employabilityBD:       s('বাংলাদেশে কর্মসংস্থান', 'Employability in BD'),
+  feeVsAverage:          s('ফি (দেশের গড় তুলনায়)', 'Fee vs Country Average'),
+
+  // Links section
+  openLink:              s('খুলুন', 'Open'),
 } as const;
 
 // ---------------------------------------------------------------------------

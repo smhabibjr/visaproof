@@ -1,40 +1,57 @@
 # VisaProof — Claude Code Instructions
 
-## Project Overview
-বাংলাদেশি স্টুডেন্টদের জন্য University offer letter ও 
-invoice স্ক্যাম যাচাই করার React Native app।
+## Project
+বাংলাদেশি students দের জন্য university offer letter
+ও invoice scam যাচাই করার React Native app।
 
 ## Tech Stack
-- React Native (Expo)
-- TypeScript
-- AsyncStorage (local storage, no backend)
-- Anthropic Claude API (document analysis)
-- bKash Payment Gateway
-- expo-document-picker
-- expo-file-system
-- react-native-pdf (PDF preview)
+- React Native (Expo) + TypeScript strict
+- AsyncStorage (no backend, no login)
+- Anthropic Claude API (claude-sonnet-4-5)
+- aamarPay payment gateway
+- expo-document-picker, expo-file-system
+- react-native-html-to-pdf, expo-sharing
+- @expo/vector-icons (Ionicons)
 
-## Core Rules (সবসময় মানতে হবে)
-1. No login, no backend — সব local এ থাকবে
-2. প্রতিটা analysis এর আগে bKash payment verify করতে হবে
-3. Report AsyncStorage এ save হবে (key: reports_list)
-4. TypeScript strict mode — any type ব্যবহার করবে না
-5. প্রতিটা component আলাদা ফাইলে থাকবে
-6. Error handling সব জায়গায় থাকতে হবে
+## Core Rules
+1. No login, no backend — সব local
+2. Payment before analysis (Feature 5 pending — skip now)
+3. TypeScript strict — no `any`
+4. All strings → /src/constants/strings.ts
+5. All colors → /src/constants/colors.ts
+6. Error handling everywhere
+7. Optional chaining for new report fields
+   (old AsyncStorage reports may lack new fields)
 
 ## Folder Structure
+```
 /src
-  /components    → reusable UI components
-  /screens       → main screens
-  /services      → API calls (Claude, bKash)
-  /storage       → AsyncStorage helpers
-  /types         → TypeScript interfaces
-  /constants     → colors, sizes, strings
-  /hooks         → custom hooks
-  /utils         → helper functions
+  /components   → UploadArea, Sidebar, ReportCard,
+                  InfoRow, Logo, Wordmark
+  /screens      → HomeScreen, LoadingScreen,
+                  ReportScreen, PaymentScreen
+  /services     → claudeService, pdfService,
+                  pdfTemplate, paymentService
+  /storage      → reportStorage
+  /types        → index.ts (all interfaces)
+  /constants    → colors.ts, strings.ts, config.ts
+  /hooks        → useFileUpload, useAnalysis, useReports
+  /utils        → fileValidator
+```
 
-## Coding Style
-- Functional components only
-- Custom hooks দিয়ে logic আলাদা রাখো
-- Constants file থেকে colors/strings নাও
-- Bengali comments লেখো গুরুত্বপূর্ণ জায়গায়
+## Key Config
+- Claude model: `claude-sonnet-4-5`
+- Claude max_tokens: `8000`
+- Claude timeout: `120s`
+- API key: `process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY`
+- Payment amount: `99 BDT` via aamarPay
+- Max file size: `5MB image / 10MB PDF / 15MB total`
+- Max stored reports: `50`
+
+```
+
+## Reference Files
+- AI_PROMPT.md → Claude API system prompt + user prompt
+- REPORT_STRUCTURE.md → full JSON structure + TypeScript types
+- PAYMENT.md → aamarPay integration details
+- STORAGE.md → AsyncStorage schema

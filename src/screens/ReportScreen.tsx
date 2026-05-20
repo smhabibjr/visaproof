@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,7 +18,7 @@ import { Colors } from '@/constants/colors';
 import { ReportStrings, t } from '@/constants/strings';
 import { generateAndShareReport } from '@/services/pdfService';
 import { getReportById } from '@/storage/reportStorage';
-import type { FullReport, GrammarQuality, Language, RiskScore } from '@/types';
+import type { FullReport, GrammarQuality, Language, RiskScore, VerificationLink } from '@/types';
 
 // ── Banner background per risk level ────────────────────────────────────────
 const RISK_BANNER_BG: Record<RiskScore, string> = {
@@ -198,9 +199,17 @@ export default function ReportScreen({ reportId }: Props) {
     const uv  = a.universityVerification;
     const ol  = a.offerLetterAnalysis;
     const inv = a.invoiceAnalysis;
+    const cdc = a.crossDocumentCheck;
+    const pa  = a.programmeAnalysis;
+    const av  = a.agentVerification;
     const grammar = grammarLabel(ol?.grammarQuality, lang);
 
     const lbl = (bn: string, en: string) => (lang === 'bn' ? bn : en);
+
+    const isForeignInstitution =
+      !!uv?.country &&
+      !uv.country.toLowerCase().includes('bangladesh') &&
+      !uv.country.toLowerCase().includes('বাংলাদেশ');
 
     return (
       <SafeAreaView style={styles.safe}>
@@ -225,7 +234,50 @@ export default function ReportScreen({ reportId }: Props) {
             <Text style={styles.bannerSummary}>{safe(a.summary, lang)}</Text>
           </View>
 
-          {/* ── Section 2: University Verification ── */}
+          {/* ── Section 2: Cross Document Check (new reports only) ── */}
+          {!!cdc && (
+            <ReportCard title={t(ReportStrings.crossDocumentCheck, lang)}>
+              <InfoRow
+                label={t(ReportStrings.docsAnalyzed, lang)}
+                value={String(cdc.documentsAnalyzed)}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.nameConsistent, lang)}
+                value={cdc.nameConsistent ?? null}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.bankDetailsConsistent, lang)}
+                value={cdc.bankDetailsConsistent ?? null}
+                lang={lang}
+                highlight={cdc.bankDetailsConsistent === false ? 'danger' : undefined}
+              />
+              <InfoRow
+                label={t(ReportStrings.datesLogical, lang)}
+                value={cdc.datesLogical ?? null}
+                lang={lang}
+              />
+              {cdc.inconsistencies.length > 0 && (
+                <View style={styles.suspiciousBox}>
+                  <Text style={styles.suspiciousTitle}>
+                    {t(ReportStrings.inconsistenciesFound, lang)}
+                  </Text>
+                  {cdc.inconsistencies.map((item, i) => (
+                    <View key={i} style={styles.suspiciousRow}>
+                      <Ionicons name="warning" size={14} color={Colors.error} />
+                      <Text style={styles.suspiciousText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {!!cdc.verdict && (
+                <Text style={styles.verdict}>{cdc.verdict}</Text>
+              )}
+            </ReportCard>
+          )}
+
+          {/* ── Section 3: University Verification ── */}
           <ReportCard title={t(ReportStrings.universityVerification, lang)}>
             <InfoRow
               label={lbl('বিশ্ববিদ্যালয়', 'University')}
@@ -270,8 +322,15 @@ export default function ReportScreen({ reportId }: Props) {
             />
             <InfoRow
               label={lbl('UGC স্বীকৃত', 'UGC Recognized')}
-              value={uv?.ugcRecognized ?? null}
+              value={
+                isForeignInstitution
+                  ? lbl('প্রযোজ্য নয় — বিদেশি প্রতিষ্ঠান', 'N/A — Foreign institution')
+                  : (uv?.ugcRecognized ?? null)
+              }
               lang={lang}
+              highlight={
+                !isForeignInstitution && uv?.ugcRecognized === false ? 'danger' : undefined
+              }
             />
             <InfoRow
               label={lbl('বিশ্ব র‍্যাংকিং', 'World Ranking')}
@@ -283,7 +342,55 @@ export default function ReportScreen({ reportId }: Props) {
             ) : null}
           </ReportCard>
 
-          {/* ── Section 3: Offer Letter Analysis ── */}
+          {/* ── Section 4: Programme Analysis (new reports only) ── */}
+          {!!pa && (
+            <ReportCard title={t(ReportStrings.programmeAnalysis, lang)}>
+              <InfoRow
+                label={t(ReportStrings.programmeType, lang)}
+                value={safe(pa.programmeLevel, lang)}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.bdRecognitionConcern, lang)}
+                value={pa.bangladeshRecognitionConcern ?? null}
+                lang={lang}
+                highlight={pa.bangladeshRecognitionConcern === true ? 'danger' : undefined}
+              />
+              <InfoRow
+                label={t(ReportStrings.employabilityBD, lang)}
+                value={safe(pa.employabilityInBangladesh, lang)}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.feeVsAverage, lang)}
+                value={safe(pa.feeVsCountryAverage, lang)}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.prPathwayConcern, lang)}
+                value={pa.prPathwayConcern ?? null}
+                lang={lang}
+                highlight={pa.prPathwayConcern === true ? 'danger' : undefined}
+              />
+              {!!pa.vetWarning && (
+                <View style={styles.warningBox}>
+                  <Ionicons name="alert-circle" size={14} color={Colors.warning} />
+                  <Text style={styles.warningText}>{pa.vetWarning}</Text>
+                </View>
+              )}
+              {!!pa.topUpWarning && (
+                <View style={styles.warningBox}>
+                  <Ionicons name="alert-circle" size={14} color={Colors.warning} />
+                  <Text style={styles.warningText}>{pa.topUpWarning}</Text>
+                </View>
+              )}
+              {!!pa.verdict && (
+                <Text style={styles.verdict}>{pa.verdict}</Text>
+              )}
+            </ReportCard>
+          )}
+
+          {/* ── Section 5: Offer Letter Analysis ── */}
           <ReportCard title={t(ReportStrings.offerLetterAnalysis, lang)}>
             <InfoRow
               label={lbl('অফিশিয়াল লেটারহেড', 'Official Letterhead')}
@@ -301,8 +408,8 @@ export default function ReportScreen({ reportId }: Props) {
               lang={lang}
             />
             <InfoRow
-              label={lbl('ডিজিটাল স্বাক্ষর', 'Digital Signature')}
-              value={ol?.hasDigitalSignature ?? null}
+              label={lbl('স্বাক্ষর / সিল', 'Signature / Seal')}
+              value={ol?.hasSignatureOrSeal ?? ol?.hasDigitalSignature ?? null}
               lang={lang}
             />
             <InfoRow
@@ -317,7 +424,47 @@ export default function ReportScreen({ reportId }: Props) {
             ) : null}
           </ReportCard>
 
-          {/* ── Section 4: Invoice Analysis (only if found) ── */}
+          {/* ── Section 6: Agent Verification (new reports, only if agent found) ── */}
+          {av?.agentFound === true && (
+            <ReportCard title={t(ReportStrings.agentVerification, lang)}>
+              <InfoRow
+                label={t(ReportStrings.agentNameLabel, lang)}
+                value={safe(av.agentName, lang)}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.agentCompany, lang)}
+                value={safe(av.agentCompany, lang)}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.maraRegistered, lang)}
+                value={av.maraRegistered ?? null}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.icefCertified, lang)}
+                value={av.icefCertified ?? null}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.bmetRegistered, lang)}
+                value={av.bmetRegistered ?? null}
+                lang={lang}
+              />
+              <InfoRow
+                label={t(ReportStrings.pressureTactics, lang)}
+                value={av.agentPressureTacticsDetected ?? null}
+                lang={lang}
+                highlight={av.agentPressureTacticsDetected === true ? 'danger' : undefined}
+              />
+              {!!av.verdict && (
+                <Text style={styles.verdict}>{av.verdict}</Text>
+              )}
+            </ReportCard>
+          )}
+
+          {/* ── Section 7: Invoice Analysis (only if found) ── */}
           {inv?.found === true && (
             <ReportCard title={t(ReportStrings.invoiceAnalysis, lang)}>
               <InfoRow
@@ -417,7 +564,26 @@ export default function ReportScreen({ reportId }: Props) {
             )}
           </ReportCard>
 
-          {/* ── Section 7: Disclaimer ── */}
+          {/* ── Section 9: Official Verification Links (new reports only) ── */}
+          {!!(a.officialVerificationLinks?.length) && (
+            <ReportCard title={t(ReportStrings.officialLinks, lang)}>
+              {(a.officialVerificationLinks as VerificationLink[]).map((link, i) => (
+                <Pressable
+                  key={i}
+                  style={styles.actionRow}
+                  onPress={() => Linking.openURL(link.url).catch(() => undefined)}
+                >
+                  <View style={styles.actionNum}>
+                    <Ionicons name="globe-outline" size={14} color={Colors.info} />
+                  </View>
+                  <Text style={[styles.actionText, styles.linkText]}>{link.label}</Text>
+                  <Ionicons name="open-outline" size={16} color={Colors.info} />
+                </Pressable>
+              ))}
+            </ReportCard>
+          )}
+
+          {/* ── Section 10: Disclaimer ── */}
           {!!a.disclaimer && (
             <View style={styles.disclaimerBox}>
               <Text style={styles.disclaimerText}>{a.disclaimer}</Text>
@@ -611,6 +777,31 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: Colors.textSecondary,
     lineHeight: 19,
+  },
+
+  // Amber warning box (VET / top-up warnings)
+  warningBox: {
+    marginTop: 10,
+    backgroundColor: '#fefce8',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400e',
+    lineHeight: 18,
+  },
+
+  // Tappable link text
+  linkText: {
+    color: Colors.info,
+    textDecorationLine: 'underline',
   },
 
   // Suspicious sub-section
