@@ -4,11 +4,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/colors';
-import { HomeStrings, t } from '@/constants/strings';
+import { AppStrings, HomeStrings, t } from '@/constants/strings';
 import type { Language } from '@/types';
 import LanguageToggle from '@/components/LanguageToggle';
 import Sidebar from '@/components/Sidebar';
-import Wordmark from '@/components/Wordmark';
 import SourcePickerSheet from '@/components/SourcePickerSheet';
 import UploadArea from '@/components/UploadArea';
 import { useFileUpload } from '@/hooks/useFileUpload';
@@ -63,7 +62,12 @@ export default function HomeScreen({ onAnalyze }: Props) {
           </Pressable>
 
           <View style={styles.headerCenter}>
-            <Wordmark width={220} />
+            <Text style={styles.appName}>{t(AppStrings.appName, language)}</Text>
+            <Text style={styles.subtitle}>
+              {language === 'bn'
+                ? 'বিশ্বাস করার আগে যাচাই করুন।'
+                : 'Verify before you trust.'}
+            </Text>
           </View>
 
           {/* Spacer to keep title centered */}
@@ -127,6 +131,19 @@ const styles = StyleSheet.create({
   headerCenter: {
     flex: 1,
     alignItems: 'center',
+  },
+  appName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#64748b',
+    marginTop: 6,
+    letterSpacing: 0.2,
   },
   scroll: { flex: 1 },
   scrollContent: {

@@ -10,7 +10,7 @@ function s(bn: string, en: string): StringMap {
 // App-wide
 // ---------------------------------------------------------------------------
 export const AppStrings = {
-  appName: s('VisaProof', 'VisaProof'),
+  appName: s('Visa Proof', 'Visa Proof'),
   tagline: s(
     'স্ক্যাম থেকে নিরাপদ থাকুন',
     'Stay safe from scams'
