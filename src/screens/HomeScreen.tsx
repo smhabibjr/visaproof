@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/colors';
@@ -17,7 +17,8 @@ type Props = {
 };
 
 export default function HomeScreen({ onAnalyze }: Props) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen,      setSidebarOpen]      = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const {
     files,
@@ -49,6 +50,57 @@ export default function HomeScreen({ onAnalyze }: Props) {
         onClose={() => setSidebarOpen(false)}
         language={language}
       />
+
+      {/* ── Language Confirmation Modal ── */}
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {language === 'bn' ? 'রিপোর্টের ভাষা নিশ্চিত করুন' : 'Confirm Report Language'}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              {language === 'bn'
+                ? 'আপনার রিপোর্টটি এই ভাষায় তৈরি হবে'
+                : 'Your report will be generated in'}
+            </Text>
+
+            <View style={styles.langBlock}>
+              <Text style={styles.langName}>
+                {language === 'bn' ? 'বাংলা' : 'English'}
+              </Text>
+              <Text style={styles.langSub}>
+                {language === 'bn' ? 'Bengali language' : 'ইংরেজি ভাষা'}
+              </Text>
+            </View>
+
+            <Pressable
+              style={styles.changeBtn}
+              onPress={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
+            >
+              <Text style={styles.changeBtnText}>
+                {language === 'bn' ? 'Switch to English' : 'বাংলায় পরিবর্তন করুন'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.confirmBtn}
+              onPress={() => {
+                setShowConfirmModal(false);
+                onAnalyze(files, language);
+              }}
+            >
+              <Text style={styles.confirmBtnText}>
+                {language === 'bn' ? 'নিশ্চিত করুন' : 'Confirm & Continue'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <SafeAreaView style={styles.safe}>
         {/* ── Header ── */}
@@ -95,9 +147,7 @@ export default function HomeScreen({ onAnalyze }: Props) {
         <View style={styles.footer}>
           <Pressable
             style={[styles.analyzeBtn, !canAnalyze && styles.analyzeBtnDisabled]}
-            onPress={() => {
-              if (canAnalyze) onAnalyze(files, language);
-            }}
+            onPress={() => { if (canAnalyze) setShowConfirmModal(true); }}
             disabled={!canAnalyze}
           >
             <Text style={[styles.analyzeBtnText, !canAnalyze && styles.analyzeBtnTextDisabled]}>
@@ -181,5 +231,76 @@ const styles = StyleSheet.create({
   },
   analyzeBtnTextDisabled: {
     color: Colors.textMuted,
+  },
+
+  // ── Modal ──
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalCard: {
+    width: '85%',
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  langBlock: {
+    marginTop: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  langName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  langSub: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 6,
+  },
+  changeBtn: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  changeBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  confirmBtn: {
+    backgroundColor: '#059669',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  confirmBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });
